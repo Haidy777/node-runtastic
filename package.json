@@ -1,0 +1,22 @@
+{
+  "name": "node-runtastic",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://Haidy777@github.com/Haidy777/node-runtastic.git"
+  },
+  "author": "Haidy777",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Haidy777/node-runtastic/issues"
+  },
+  "homepage": "https://github.com/Haidy777/node-runtastic",
+  "dependencies": {
+    "bluebird": "^3.0.2",
+    "jsdom": "^7.0.2",
+    "request": "^2.65.0",
+    "underscore": "^1.8.3"
+  }
+}
