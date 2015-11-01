@@ -2,6 +2,7 @@ var request = require('request');
 var jsdom = require('jsdom');
 var Promise = require('bluebird');
 var _ = require('underscore');
+var moment = require('moment');
 
 var nodeRuntastic = {
     _username: '',
@@ -22,7 +23,7 @@ var nodeRuntastic = {
 
     loggedIn: false,
 
-    metaInfo: {
+    _metaInfo: {
         id: null,
         username: '',
         firstName: '',
@@ -31,7 +32,30 @@ var nodeRuntastic = {
         weight: null
     },
 
-    login: function () {
+    setup: function (username, password) {
+        var self = this;
+        return new Promise(function (resolve, reject) {
+            if (username !== '' && password !== '') {
+                self._username = username;
+                self._password = password;
+                self._login().then(function (metaInfo) {
+                    resolve(metaInfo);
+                });
+            } else {
+                reject('No username or password supplied.')
+            }
+        });
+    },
+
+    getMetaInfos: function () {
+        if (this.loggedIn) {
+            return this._metaInfo;
+        } else {
+            return 'Not logged in, run setup Method.';
+        }
+    },
+
+    _login: function () {
         var self = this;
         return new Promise(function (resolve, reject) {
             if (self._username !== '' && self._password !== '') {
@@ -54,12 +78,12 @@ var nodeRuntastic = {
                         body = JSON.parse(body);
                         var currentUser = body.current_user;
 
-                        self.metaInfo.id = currentUser.id;
-                        self.metaInfo.username = currentUser.slug;
-                        self.metaInfo.firstName = currentUser.first_name;
-                        self.metaInfo.lastName = currentUser.last_name;
-                        self.metaInfo.height = currentUser.height;
-                        self.metaInfo.weight = currentUser.weight;
+                        self._metaInfo.id = currentUser.id;
+                        self._metaInfo.username = currentUser.slug;
+                        self._metaInfo.firstName = currentUser.first_name;
+                        self._metaInfo.lastName = currentUser.last_name;
+                        self._metaInfo.height = currentUser.height;
+                        self._metaInfo.weight = currentUser.weight;
 
                         jsdom.env(body.update, function (error, window) {
                             if (error) {
@@ -68,7 +92,7 @@ var nodeRuntastic = {
                             }
                             self._authenticityToken = window.document.getElementsByName('authenticity_token')[0].value;
                             self.loggedIn = true;
-                            resolve(self.metaInfo);
+                            resolve(self._metaInfo);
                         });
                     }
                 });
@@ -76,7 +100,7 @@ var nodeRuntastic = {
         });
     },
 
-    getAllActivities: function () {
+    _getAllActivities: function () {
         var self = this;
 
         return new Promise(function (resolve, reject) {
@@ -88,7 +112,7 @@ var nodeRuntastic = {
             } else {
                 request({
                     method: 'GET',
-                    uri: self._baseUrl + '/en/users/' + self.metaInfo.username + '/sport-sessions',
+                    uri: self._baseUrl + '/en/users/' + self._metaInfo.username + '/sport-sessions',
                     jar: self._cookieJar
                 }, function (error, response, body) {
                     if (error) {
@@ -119,9 +143,85 @@ var nodeRuntastic = {
 
                             resolve(data);
                         });
+                    } else {
+                        reject();
                     }
                 });
             }
+        });
+    },
+
+    getActivities: function (month, year) {
+        var self = this;
+
+        if (month && month < 10) {
+            month = '0' + month.toString();
+        }
+
+        if (year && year < 1000) {
+            return 'Year should be bigger than 1000';
+        }
+
+        return new Promise(function (resolve, reject) {
+            if (self.loggedIn) {
+                self._getAllActivities().then(function (activities) {
+                    var filteredActivities = _.filter(activities, function (activity) {
+                        var activityDate = moment(activity[1]).format('YYYY-MM');
+
+                        if (month && year) { //Use month and year to find entries
+                            return activityDate == year.toString() + '-' + month.toString();
+                        } else if (month) { //Use month in current year to find entries
+                            return activityDate == moment().format('YYYY') + '-' + month.toString();
+                        } else if (year) { //Use current year to find entries
+                            return activityDate.substr(0, 4) == year;
+                        }
+                    });
+
+                    request({
+                        method: 'POST',
+                        uri: self._baseUrl + self._sessionsApiUrl,
+                        form: {
+                            'user_id': self._metaInfo.id,
+                            'items': filteredActivities.join(','),
+                            'authenticity_token': self._authenticityToken
+                        },
+                        jar: self._cookieJar
+                    }, function (error, response, body) {
+                        if (error) {
+                            console.log(error);
+                            reject();
+                        }
+
+                        if (response && response.statusCode === 200) {
+                            resolve(JSON.parse(body));
+                        } else {
+                            reject();
+                        }
+                    });
+                });
+            } else {
+                reject('Not logged in, run setup Method.');
+            }
+        });
+    },
+
+    getActivitiesWithFormatedDate: function (month, year) {
+        var self = this;
+        return new Promise(function (resolve, reject) {
+            self.getActivities(month, year).each(function (activity) {
+                var activityDate = activity.date;
+                activity.date =
+                    activityDate.year + '-'
+                    + activityDate.month + '-'
+                    + activityDate.day + ' '
+                    + (activityDate.hour < 10 ? '0' + activityDate.hour : activityDate.hour) + ':'
+                    + (activityDate.minutes < 10 ? '0' + activityDate.minutes : activityDate.minutes) + ':'
+                    + (activityDate.seconds < 10 ? '0' + activityDate.seconds : activityDate.seconds);
+            }).then(function (activities) {
+                resolve(_.sortBy(activities, 'date'));
+            }).catch(function (e) {
+                reject(e);
+            });
         });
     }
 };
