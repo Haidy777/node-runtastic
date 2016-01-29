@@ -1,6 +1,8 @@
 # node-runtastic
 A simple NodeJS-Module to fetch activities from [runtastic](https://www.runtastic.com)
 
+Based on [timoschlueter/php-runtastic](https://github.com/timoschlueter/php-runtastic)
+
 ## Usage
     var nodeRuntastic = require('node-runtastic');
 
