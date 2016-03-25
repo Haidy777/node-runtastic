@@ -1,6 +1,6 @@
 var request = require('request');
 var jsdom = require('jsdom');
-var Promise = require('bluebird');
+var Pact = require('bluebird');
 var _ = require('underscore');
 var moment = require('moment');
 
@@ -34,7 +34,7 @@ var nodeRuntastic = {
 
     setup: function (username, password) {
         var self = this;
-        return new Promise(function (resolve, reject) {
+        return new Pact(function (resolve, reject) {
             if (username !== '' && password !== '') {
                 self._username = username;
                 self._password = password;
@@ -57,7 +57,7 @@ var nodeRuntastic = {
 
     _login: function () {
         var self = this;
-        return new Promise(function (resolve, reject) {
+        return new Pact(function (resolve, reject) {
             if (self._username !== '' && self._password !== '') {
                 self._cookieJar = request.jar();
                 request({
@@ -103,7 +103,7 @@ var nodeRuntastic = {
     _getAllActivities: function () {
         var self = this;
 
-        return new Promise(function (resolve, reject) {
+        return new Pact(function (resolve, reject) {
             if (!self.loggedIn) {
                 self.login().then(function (metaInfo) {
                     console.log(metaInfo);
@@ -162,7 +162,7 @@ var nodeRuntastic = {
             return 'Year should be bigger than 1000';
         }
 
-        return new Promise(function (resolve, reject) {
+        return new Pact(function (resolve, reject) {
             if (self.loggedIn) {
                 self._getAllActivities().then(function (activities) {
                     var filteredActivities = _.filter(activities, function (activity) {
@@ -207,7 +207,7 @@ var nodeRuntastic = {
 
     getActivitiesWithFormatedDate: function (month, year) {
         var self = this;
-        return new Promise(function (resolve, reject) {
+        return new Pact(function (resolve, reject) {
             self.getActivities(month, year).each(function (activity) {
                 var activityDate = activity.date;
                 activity.date =
