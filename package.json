@@ -15,7 +15,7 @@
   "homepage": "https://github.com/Haidy777/node-runtastic",
   "dependencies": {
     "bluebird": "^3.0.2",
-    "jsdom": "^7.0.2",
+    "cheerio": "^0.20.0",
     "moment": "^2.10.6",
     "request": "^2.65.0",
     "underscore": "^1.8.3"

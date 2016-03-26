@@ -1,5 +1,5 @@
 var request = require('request');
-var jsdom = require('jsdom');
+var cheerio = require('cheerio');
 var Pact = require('bluebird');
 var _ = require('underscore');
 var moment = require('moment');
@@ -85,15 +85,11 @@ var nodeRuntastic = {
                         self._metaInfo.height = currentUser.height;
                         self._metaInfo.weight = currentUser.weight;
 
-                        jsdom.env(body.update, function (error, window) {
-                            if (error) {
-                                console.log(error);
-                                reject();
-                            }
-                            self._authenticityToken = window.document.getElementsByName('authenticity_token')[0].value;
-                            self.loggedIn = true;
-                            resolve(self._metaInfo);
-                        });
+                        var loadedDOM = cheerio.load(body.update);
+
+                        self._authenticityToken = loadedDOM('input[name=authenticity_token]').val();
+                        self.loggedIn = true;
+                        resolve(self._metaInfo);
                     }
                 });
             }
@@ -121,28 +117,25 @@ var nodeRuntastic = {
                     }
 
                     if (response && response.statusCode === 200) {
-                        jsdom.env(body, function (error, window) {
-                            if (error) {
-                                console.log(error);
-                                reject();
+                        var loadedDOM = cheerio.load(body);
+                        //search for all scriptTags
+                        var scriptTags = loadedDOM('script');
+
+                        //search for scriptTag with the designated data
+                        var dataTag = _.filter(scriptTags, function (scriptTag) {
+                            if (scriptTag.children[0]) {
+                                return scriptTag.children[0].data.indexOf('index_data') !== -1;
                             }
+                            return false;
+                        })[0];
 
-                            //search for all scriptTags
-                            var scriptTags = window.document.getElementsByTagName('script');
+                        //remove unessesary things and parse as json, so we have arrays
+                        var data = JSON.parse(dataTag.children[0].data.substr(73).split(';')[0]);
 
-                            //search for scriptTag with the designated data
-                            var dataTag = _.filter(scriptTags, function (scriptTag) {
-                                return scriptTag.innerHTML.indexOf('index_data') > -1;
-                            })[0];
+                        //sort data by date asc
+                        data = _.sortBy(data, '1');
 
-                            //remove unessesary things and parse as json, so we have arrays
-                            var data = JSON.parse(dataTag.innerHTML.substr(73).split(';')[0]);
-
-                            //sort data by date asc
-                            data = _.sortBy(data, '1');
-
-                            resolve(data);
-                        });
+                        resolve(data);
                     } else {
                         reject();
                     }
