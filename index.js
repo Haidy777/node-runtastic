@@ -33,12 +33,12 @@ var nodeRuntastic = {
     },
 
     setup: function (username, password) {
-        var self = this;
+        var context = this;
         return new Pact(function (resolve, reject) {
             if (username !== '' && password !== '') {
-                self._username = username;
-                self._password = password;
-                self._login().then(function (metaInfo) {
+                context._username = username;
+                context._password = password;
+                context._login().then(function (metaInfo) {
                     resolve(metaInfo);
                 });
             } else {
@@ -56,18 +56,18 @@ var nodeRuntastic = {
     },
 
     _login: function () {
-        var self = this;
+        var context = this;
         return new Pact(function (resolve, reject) {
-            if (self._username !== '' && self._password !== '') {
-                self._cookieJar = request.jar();
+            if (context._username !== '' && context._password !== '') {
+                context._cookieJar = request.jar();
                 request({
                     method: 'POST',
-                    uri: self._baseUrl + self._loginUrl,
+                    uri: context._baseUrl + context._loginUrl,
                     form: {
-                        'user[email]': self._username,
-                        'user[password]': self._password
+                        'user[email]': context._username,
+                        'user[password]': context._password
                     },
-                    jar: self._cookieJar
+                    jar: context._cookieJar
                 }, function (error, response, body) {
                     if (error) {
                         console.log(error);
@@ -78,18 +78,18 @@ var nodeRuntastic = {
                         body = JSON.parse(body);
                         var currentUser = body.current_user;
 
-                        self._metaInfo.id = currentUser.id;
-                        self._metaInfo.username = currentUser.slug;
-                        self._metaInfo.firstName = currentUser.first_name;
-                        self._metaInfo.lastName = currentUser.last_name;
-                        self._metaInfo.height = currentUser.height;
-                        self._metaInfo.weight = currentUser.weight;
+                        context._metaInfo.id = currentUser.id;
+                        context._metaInfo.username = currentUser.slug;
+                        context._metaInfo.firstName = currentUser.first_name;
+                        context._metaInfo.lastName = currentUser.last_name;
+                        context._metaInfo.height = currentUser.height;
+                        context._metaInfo.weight = currentUser.weight;
 
                         var loadedDOM = cheerio.load(body.update);
 
-                        self._authenticityToken = loadedDOM('input[name=authenticity_token]').val();
-                        self.loggedIn = true;
-                        resolve(self._metaInfo);
+                        context._authenticityToken = loadedDOM('input[name=authenticity_token]').val();
+                        context.loggedIn = true;
+                        resolve(context._metaInfo);
                     }
                 });
             }
@@ -97,19 +97,19 @@ var nodeRuntastic = {
     },
 
     _getAllActivities: function () {
-        var self = this;
+        var context = this;
 
         return new Pact(function (resolve, reject) {
-            if (!self.loggedIn) {
-                self.login().then(function (metaInfo) {
+            if (!context.loggedIn) {
+                context.login().then(function (metaInfo) {
                     console.log(metaInfo);
-                    self.getAllActivities();
+                    context.getAllActivities();
                 });
             } else {
                 request({
                     method: 'GET',
-                    uri: self._baseUrl + '/en/users/' + self._metaInfo.username + '/sport-sessions',
-                    jar: self._cookieJar
+                    uri: context._baseUrl + '/en/users/' + context._metaInfo.username + '/sport-sessions',
+                    jar: context._cookieJar
                 }, function (error, response, body) {
                     if (error) {
                         console.log(error);
@@ -145,7 +145,7 @@ var nodeRuntastic = {
     },
 
     getActivities: function (month, year) {
-        var self = this;
+        var context = this;
 
         if (month && month < 10) {
             month = '0' + month.toString();
@@ -156,8 +156,8 @@ var nodeRuntastic = {
         }
 
         return new Pact(function (resolve, reject) {
-            if (self.loggedIn) {
-                self._getAllActivities().then(function (activities) {
+            if (context.loggedIn) {
+                context._getAllActivities().then(function (activities) {
                     var filteredActivities = _.filter(activities, function (activity) {
                         var activityDate = moment(activity[1]).format('YYYY-MM');
 
@@ -172,13 +172,13 @@ var nodeRuntastic = {
 
                     request({
                         method: 'POST',
-                        uri: self._baseUrl + self._sessionsApiUrl,
+                        uri: context._baseUrl + context._sessionsApiUrl,
                         form: {
-                            'user_id': self._metaInfo.id,
+                            'user_id': context._metaInfo.id,
                             'items': filteredActivities.join(','),
-                            'authenticity_token': self._authenticityToken
+                            'authenticity_token': context._authenticityToken
                         },
-                        jar: self._cookieJar
+                        jar: context._cookieJar
                     }, function (error, response, body) {
                         if (error) {
                             console.log(error);
@@ -199,9 +199,9 @@ var nodeRuntastic = {
     },
 
     getActivitiesWithFormatedDate: function (month, year) {
-        var self = this;
+        var context = this;
         return new Pact(function (resolve, reject) {
-            self.getActivities(month, year).each(function (activity) {
+            context.getActivities(month, year).each(function (activity) {
                 var activityDate = activity.date;
                 activity.date =
                     activityDate.year + '-'
